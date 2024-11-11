@@ -16,7 +16,6 @@ if __name__ == '__main__':
         # Get the common cluster information
         first = g.iloc[0]
         cluster = first[['ClusterID', 'lon', 'lat', 'rural', 'RegionID', 'country']]
-        cluster.columns = ['cluster_id', 'lon', 'lat', 'rural', 'region_id', 'country']
 
         # Get a interpretable survey name
         cluster['survey'] = get_survey_name(first['source'])
@@ -30,4 +29,5 @@ if __name__ == '__main__':
 
 
     new_df = df.groupby(['ClusterID', 'source']).apply(fix_group).reset_index(drop=True)
-    new_df.to_csv('/mimer/NOBACKUP/groups/globalpoverty1/markus/impute_aware_ate/dhs_data.csv', index=False)
+    new_df.columns = ['cluster_id', 'lon', 'lat', 'rural', 'region_id', 'country', 'survey', 'month', 'year', 'iwi']
+    new_df.to_csv('/mimer/NOBACKUP/groups/globalpoverty1/markus/impute_aware_ate/dhs_data_with_slash.csv', index=False)
