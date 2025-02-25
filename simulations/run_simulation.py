@@ -171,22 +171,20 @@ def calculate_errors(ate_estimates):
 # -----------------------------------------------------------------------------
 # 5. Main simulation procedure
 # -----------------------------------------------------------------------------
-def main(RANDOM_STATE, sigma_X):
+def main(RANDOM_STATE, sigma_X, n_train_samples, n_trial_samples, tau):
     """
     Main function to run the simulation and estimate the Average Treatment Effect (ATE).
 
     Parameters:
     RANDOM_STATE (int): Random seed for reproducibility.
     sigma_X (float): Standard deviation of the noise added to the proxy X.
+    n_train_samples (int): Number of training samples to generate.
+    n_trial_samples (int): Number of trial samples to generate.
+    tau (float): True Average Treatment Effect (ATE) of treatment A.
 
     Returns:
     None
     """
-
-    # Simulation parameters
-    tau = 0.2
-    n_train_samples = 60000
-    n_trial_samples = 10000
 
     print("Generating training population with seed =", RANDOM_STATE)
     train_pop = generate_population(img_proxy_func, tau=tau, n_samples=n_train_samples, sigma_X=sigma_X, seed=RANDOM_STATE)
@@ -250,9 +248,9 @@ def main(RANDOM_STATE, sigma_X):
     # -----------------------------------------------------------------------------
     # 6. Save results to a unique run directory under DATA_DIR
     # -----------------------------------------------------------------------------
-    # Create a unique run id based on the random state, sigma_X, and current timestamp.
-    run_id = f"run_{RANDOM_STATE}_sigmaX_{sigma_X}_{int(time.time())}"
-    run_dir = os.path.join(DATA_DIR, 'simulation_with_true_runs', run_id)
+    # Create a unique run id based on the random state, sigma_X, n_train_samples, and n_trial_samples
+    run_id = f"run_{RANDOM_STATE}_sigmaX_{sigma_X}_ntrain_{n_train_samples}_ntrial_{n_trial_samples}"
+    run_dir = os.path.join(DATA_DIR, 'simulation_runs', run_id)
     os.makedirs(run_dir, exist_ok=True)
     
     # Save ATE estimates
@@ -296,5 +294,17 @@ if __name__ == "__main__":
         "--sigma_X", type=float, default=5.0,
         help="Standard deviation of the noise added to the proxy X (default: 5.0)"
     )
+    parser.add_argument(
+        "--n_train_samples", type=int, default=60000,
+        help="Number of training samples to generate (default: 60000)"
+    )
+    parser.add_argument(
+        "--n_trial_samples", type=int, default=10000,
+        help="Number of trial samples to generate (default: 10000)"
+    )
+    parser.add_argument(
+        "--tau", type=float, default=0.2,
+        help="True Average Treatment Effect (ATE) of treatment A (default: 0.2)"
+    )
     args = parser.parse_args()
-    main(args.random_state, args.sigma_X)
+    main(args.random_state, args.sigma_X, args.n_train_samples, args.n_trial_samples, args.tau)
