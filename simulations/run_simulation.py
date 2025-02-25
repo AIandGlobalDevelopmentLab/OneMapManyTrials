@@ -218,14 +218,17 @@ def main(RANDOM_STATE, sigma_X):
     y_pred_dists = model.predict(X_trial)
     
     n_boots = 1000  # Number of bootstrap samples
-    ate_estimates_all = []
-    point_ate_estimates = []
+    ate_estimates_all = [] # ATE estimates using predictive distributions
+    point_ate_estimates = [] # ATE estimates using point predictions
+    sample_ate_estimates = [] # ATE estimates using true labels
     for i in tqdm(range(n_boots)):
-        y_pred_dists_i, y_pred_trial_i, A_trial_i, p_A_trial_i = resample(y_pred_dists, y_pred_trial, A_trial, p_A_trial, random_state=i, n_samples=n_trial_samples)
+        y_pred_dists_i, y_pred_trial_i, A_trial_i, p_A_trial_i, Y_trial_i = resample(y_pred_dists, y_pred_trial, A_trial, p_A_trial, Y_trial, random_state=i, n_samples=n_trial_samples)
         boot_ate_ests = estimate_ate_with_pred_dists(y_pred_dists_i, A_trial_i, p_A_trial_i, seed=i)
         boot_point_ate_est = get_ate(A_trial_i, y_pred_trial_i, p_A_trial_i)
+        boot_sample_ate_est = get_ate(A_trial_i, Y_trial_i, p_A_trial_i)
         ate_estimates_all.append(boot_ate_ests)
         point_ate_estimates.append(boot_point_ate_est)
+        sample_ate_estimates.append(boot_sample_ate_est)
     
     ate_estimates_all = np.asarray(ate_estimates_all)
     modeling_error, sampling_error = calculate_errors(ate_estimates_all)
@@ -249,7 +252,7 @@ def main(RANDOM_STATE, sigma_X):
     # -----------------------------------------------------------------------------
     # Create a unique run id based on the random state, sigma_X, and current timestamp.
     run_id = f"run_{RANDOM_STATE}_sigmaX_{sigma_X}_{int(time.time())}"
-    run_dir = os.path.join(DATA_DIR, 'simulation_with_point_runs', run_id)
+    run_dir = os.path.join(DATA_DIR, 'simulation_with_true_runs', run_id)
     os.makedirs(run_dir, exist_ok=True)
     
     # Save ATE estimates
@@ -270,7 +273,8 @@ def main(RANDOM_STATE, sigma_X):
         'modeling_error': modeling_error,
         'sampling_error': sampling_error,
         'global_mean': global_mean,
-        'point_ate_estimates': point_ate_estimates
+        'point_ate_estimates': point_ate_estimates,
+        'sample_ate_estimates': sample_ate_estimates
     }
     output_path_results = os.path.join(run_dir, "results.json")
     with open(output_path_results, 'w') as f:
