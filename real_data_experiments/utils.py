@@ -6,7 +6,7 @@ import torch
 import torch.nn as nn
 import torch.optim as optim
 import numpy as np
-from sklearn.metrics import r2_score
+from sklearn.metrics import r2_score, mean_squared_error
 from sklearn.preprocessing import StandardScaler
 from sklearn.decomposition import PCA
 from sklearn.model_selection import train_test_split
@@ -16,6 +16,7 @@ import matplotlib.pyplot as plt
 from tqdm import tqdm
 
 sns.set_theme()
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
 RANDOM_STATE = 42
 N_COMPONENTS = 232
@@ -50,7 +51,9 @@ def load_data():
     
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
     X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=RANDOM_STATE)
+    #X_cal, X_val, y_cal, y_val = train_test_split(X_val, y_val, test_size=0.5, random_state=RANDOM_STATE)
     
+    #return X_train, X_val, X_cal, X_test, y_train, y_val, y_cal, y_test
     return X_train, X_val, X_test, y_train, y_val, y_test
 
 
@@ -77,18 +80,78 @@ class RegressionModel(nn.Module):
                 nn.ReLU(),
                 nn.Linear(32, 1)
             )
+        elif size == 'L':
+            self.fc = nn.Sequential(
+                nn.Linear(N_COMPONENTS, 128),
+                nn.ReLU(),
+                nn.Linear(128, 64),
+                nn.ReLU(),
+                nn.Linear(64, 32),
+                nn.ReLU(),
+                nn.Linear(32, 32),
+                nn.ReLU(),
+                nn.Linear(32, 1)
+            )
     
     def forward(self, x):
         return self.fc(x).squeeze()
+    
+    
+# -------------------
+# CVAE Model
+# -------------------
+class CVAE(nn.Module):
+    def __init__(self, input_dim=232, condition_dim=1, latent_dim=16, hidden_dim=128):
+        super(CVAE, self).__init__()
+
+        # Encoder
+        self.encoder = nn.Sequential(
+            nn.Linear(input_dim + condition_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU()
+        )
+        self.fc_mu = nn.Linear(hidden_dim, latent_dim)  # Mean of latent space
+        self.fc_logvar = nn.Linear(hidden_dim, latent_dim)  # Log variance
+
+        # Decoder
+        self.decoder = nn.Sequential(
+            nn.Linear(latent_dim + condition_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, hidden_dim),
+            nn.ReLU(),
+            nn.Linear(hidden_dim, input_dim)  # Output X'
+        )
+
+    def reparameterize(self, mu, logvar):
+        """Reparameterization trick to sample Z"""
+        std = torch.exp(0.5 * logvar)  # Convert log variance to standard deviation
+        eps = torch.randn_like(std)  # Sample from standard normal
+        return mu + eps * std
+
+    def forward(self, x, y):
+        """Forward pass through CVAE"""
+        # Encode X and Y
+        enc_input = torch.cat([x, y], dim=1)  # Concatenate X with Y
+        h = self.encoder(enc_input)
+        mu = self.fc_mu(h)
+        logvar = self.fc_logvar(h)
+        z = self.reparameterize(mu, logvar)  # Sample latent variable
+
+        # Decode Z and Y
+        dec_input = torch.cat([z, y], dim=1)  # Concatenate Z with Y
+        x_recon = self.decoder(dec_input)
+
+        return x_recon, mu, logvar
 
 # ================ Training ==================
 
-def train_model(X_train, X_val, y_train, y_val, loss_fn, lr=1e-3, l2=1e-5, model_size='M', model_name=None, verbose=1):
+def train_model(X_train, X_val, y_train, y_val, loss_fn, lr=1e-3, l2=1e-5, base_model=None, model_size='M', model_name=None, verbose=1):
     
     torch.manual_seed(RANDOM_STATE)
 
     # Instantiate model
-    main_model = RegressionModel(model_size).cuda()
+    main_model = base_model if base_model else RegressionModel(model_size).cuda()
 
     # Optimizer
     main_optimizer = optim.Adam(main_model.parameters(), lr=lr, weight_decay=l2)
@@ -126,7 +189,7 @@ def train_model(X_train, X_val, y_train, y_val, loss_fn, lr=1e-3, l2=1e-5, model
                 best_epoch = epoch
             
             # Early stopping
-            if epoch - best_epoch > 20:
+            if epoch - best_epoch > 200:
                 break
                 
     if best_epoch == epoch:
@@ -151,6 +214,26 @@ def get_slope_model(targets, predictions):
     return slope_model
 
 # ================ Plotting ==================
+
+def should_use_log_scale(x_values, y_values):
+    x_values = np.array(x_values).reshape(-1, 1)  # Reshape for sklearn
+    y_values = np.array(y_values)
+    
+    # Fit Linear Model: y = a*x + b
+    lin_model = LinearRegression().fit(x_values, y_values)
+    lin_pred = lin_model.predict(x_values)
+    lin_max_se = np.max((y_values - lin_pred) ** 2)
+    
+    # Fit Log Model: log(y) = a*x + b (Only use positive y-values)
+    if np.any(y_values <= 0):
+        return False  # Log model is invalid if any y <= 0
+    
+    log_y_values = np.exp(y_values)
+    log_model = LinearRegression().fit(x_values, log_y_values)
+    log_pred = np.log(log_model.predict(x_values))  # Convert back to original scale
+    log_max_se = np.max((y_values - log_pred) ** 2)
+    
+    return log_max_se < lin_max_se  # Use log scale if it fits better
 
 def plot_history(train_history, val_history, model_name=None):
     
@@ -177,7 +260,8 @@ def plot_history(train_history, val_history, model_name=None):
         
         for i, loss_type in enumerate(loss_types):
             sns.lineplot(data=history_df, x='Epoch', y=loss_type, hue='Set', ax=axs[i])
-            axs[i].set_yscale('log')
+            if should_use_log_scale(history_df['Epoch'], history_df[loss_type]):
+                axs[i].set_yscale('log')
             
         fig.suptitle(title, fontsize=16)
         plt.subplots_adjust(top=0.85)
@@ -186,7 +270,8 @@ def plot_history(train_history, val_history, model_name=None):
     else:
         loss_type = next(iter(loss_types))
         sns.lineplot(data=history_df, x='Epoch', y=loss_type, hue='Set')
-        plt.yscale('log')
+        if should_use_log_scale(history_df['Epoch'], history_df[loss_type]):
+            plt.yscale('log')
         plt.title(title)
         plt.show()
 
@@ -210,7 +295,7 @@ def parity_plot(targets, predictions, title=None, ax=None):
     true_y = slope_model.predict(x.reshape(-1, 1))
 
     # Compute statistics and format the string
-    stats_text = f'b={slope_model.coef_[0]:.2f}, r2={r2_score(targets, predictions):.2f}'
+    stats_text = f'k={slope_model.coef_[0]:.2f}, r2={r2_score(targets, predictions):.2f}'
 
     ax.plot(x, ideal_y, 'k--', label='Ideal')
     ax.plot(x, true_y, c=sns.color_palette()[1], label='Fitted')
