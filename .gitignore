@@ -166,3 +166,4 @@ config.ini
 
 # Stuff I don't want in the repo
 warmup/
+logs/
