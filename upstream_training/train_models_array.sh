@@ -3,7 +3,7 @@
 #SBATCH -N 1
 #SBATCH --gpus-per-node=A100:1
 #SBATCH -t 0-02:00:00
-#SBATCH --array=0-17     # Adjust based on number of lines in train_models_array_args.txt
+#SBATCH --array=0-23     # Adjust based on number of lines in train_models_array_args.txt
 #SBATCH -o ../logs/slurm-%A/%a.out
 #SBATCH -e ../logs/slurm-%A/%a.err
 

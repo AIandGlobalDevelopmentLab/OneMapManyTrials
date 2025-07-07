@@ -554,4 +554,7 @@ if __name__ == '__main__':
     df['train_score'] = df.apply(lambda row: score_function(row['iwi_hat'], train_kdes[row['cv_fold']]), axis=1)
     df['val_score'] = df.apply(lambda row: score_function(row['iwi_hat'], val_kdes[row['cv_fold']]), axis=1)
 
+    # Restore original IWI values
+    df['iwi'] = df['iwi'] * std_iwi + mean_iwi
+
     df.to_csv(os.path.join(SAVE_DIR, 'dhs_with_imgs_predictions.csv'), index=False)
