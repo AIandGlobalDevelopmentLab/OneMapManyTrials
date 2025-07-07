@@ -17,6 +17,8 @@ from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_absolute_error
 from scipy.stats import gaussian_kde
 import argparse
+import h5py
+from time import time
 
 # Read config file
 config = configparser.ConfigParser()
@@ -34,7 +36,7 @@ def get_save_dir_name(args):
         'loss': 'mse',
         'batch_size': 128,
         'lr': 1e-4,
-        'lambda_r': 1e-5,
+        'lambda_r': 1e-4,
         'lambda_b': 5,
         'num_linear_epochs': 3,
         'num_top_epochs': 20,
@@ -74,7 +76,7 @@ def init_model():
 
     return model
 
-class RegressionDataset(Dataset):
+'''class RegressionDataset(Dataset):
     def __init__(self, df, img_dir, transform=None):
         self.df = df.reset_index(drop=True)
         self.img_dir = img_dir
@@ -87,12 +89,37 @@ class RegressionDataset(Dataset):
         cluster_id = self.df.iloc[idx]['cluster_id']
         img_path = os.path.join(self.img_dir, cluster_id, 'landsat.np')
         img = np.load(img_path)
-        target = (self.df.iloc[idx]['iwi'] / 100)
+        target = self.df.iloc[idx]['iwi']
+        if self.transform:
+            img = self.transform(img)
+        return img, target'''
+
+class RegressionDataset(Dataset):
+    def __init__(self, df, hdf5_path, transform=None):
+        self.df = df.reset_index(drop=True)
+        self.hdf5_path = hdf5_path
+        self.transform = transform
+        self.h5_file = None  # Will be initialized lazily in __getitem__
+
+    def __len__(self):
+        return len(self.df)
+
+    def __getitem__(self, idx):
+        if self.h5_file is None:
+            self.h5_file = h5py.File(self.hdf5_path, 'r')
+
+        cluster = self.df.iloc[idx]
+        img = self.h5_file[cluster['cluster_id']][:].astype(np.float32)
+        target = cluster['iwi']
         if self.transform:
             img = self.transform(img)
         return img, target
 
-def get_dataloaders(df, img_dir, train_folds, val_fold, test_fold, batch_size=128, num_workers=16):
+    def __del__(self):
+        if self.h5_file is not None:
+            self.h5_file.close()
+
+def get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=128, num_workers=16):
 
     # Get the indices for each fold
     train_folds = df[df['cv_fold'].isin(train_folds)].index.tolist()
@@ -112,9 +139,9 @@ def get_dataloaders(df, img_dir, train_folds, val_fold, test_fold, batch_size=12
         transforms.RandomVerticalFlip()
     ])
 
-    train_dataset = RegressionDataset(df=df.iloc[train_folds], img_dir=img_dir, transform=train_transform)
-    val_dataset = RegressionDataset(df=df.iloc[val_fold], img_dir=img_dir, transform=landsat_transform)
-    test_dataset = RegressionDataset(df=df.iloc[test_fold], img_dir=img_dir, transform=landsat_transform)
+    train_dataset = RegressionDataset(df=df.iloc[train_folds], hdf5_path=hdf5_path, transform=train_transform)
+    val_dataset = RegressionDataset(df=df.iloc[val_fold], hdf5_path=hdf5_path, transform=landsat_transform)
+    test_dataset = RegressionDataset(df=df.iloc[test_fold], hdf5_path=hdf5_path, transform=landsat_transform)
 
     train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, persistent_workers=True)
     val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, persistent_workers=True)
@@ -174,7 +201,7 @@ class RatledgeLoss(nn.Module):
 
 def train_model(model, train_loader, val_loader, num_epochs=20, patience=5, lr=1e-4, 
     loss='mse', lambda_r=1e-5, lambda_b=5, T_0=5, T_mult=2, device=device,
-    freeze_backbone=False, freeze_until=None, plot_loss=False):
+    freeze_backbone=False, freeze_until=None):
     
     # Optionally freeze parts of the model
     if freeze_backbone:
@@ -211,21 +238,39 @@ def train_model(model, train_loader, val_loader, num_epochs=20, patience=5, lr=1
 
     progress_bar = tqdm(range(num_epochs), desc="Training Progress")
 
+    data_time = 0.0
+    inference_time = 0.0
+    backprop_time = 0.0
+    val_data_time = 0.0
+    val_inference_time = 0.0
+
     for epoch in progress_bar:
         model.train()
         running_loss = 0.0
+        start_data_time = time()
         for inputs, targets in train_loader:
             inputs = inputs.to(device, dtype=torch.float32, memory_format=torch.channels_last)
             targets = targets.to(device, dtype=torch.float32)
+            end_data_time = time()
+            data_time += end_data_time - start_data_time
 
             optimizer.zero_grad()
             with autocast():
+                start_inference_time = time()
                 outputs = model(inputs).squeeze()  # remove extra dim if needed
+                end_inference_time = time()
+                inference_time += end_inference_time - start_inference_time
                 loss = criterion(outputs, targets)
+
+            # Backpropagation
+            start_backprop_time = time()
             scaler.scale(loss).backward()
             scaler.step(optimizer)
             scaler.update()
             running_loss += loss.item() * inputs.size(0)
+            end_backprop_time = time()
+            backprop_time += end_backprop_time - start_backprop_time
+            start_data_time = time()  # reset for next batch
 
         epoch_loss = running_loss / len(train_loader.dataset)
         train_losses.append(epoch_loss)
@@ -234,12 +279,19 @@ def train_model(model, train_loader, val_loader, num_epochs=20, patience=5, lr=1
         model.eval()
         val_loss = 0.0
         with torch.no_grad():
+            start_val_data_time = time()
             for inputs, targets in val_loader:
                 inputs = inputs.to(device, dtype=torch.float32, memory_format=torch.channels_last)
                 targets = targets.to(device, dtype=torch.float32)
+                end_val_data_time = time()
+                val_data_time += end_val_data_time - start_val_data_time
+                stat_val_inference_time = time()
                 outputs = model(inputs).squeeze()
+                end_val_inference_time = time()
+                val_inference_time += end_val_inference_time - stat_val_inference_time
                 loss = criterion(outputs, targets)
                 val_loss += loss.item() * inputs.size(0)
+                start_val_data_time = time()  # reset for next batch
 
         val_loss /= len(val_loader.dataset)
         val_losses.append(val_loss)
@@ -259,18 +311,16 @@ def train_model(model, train_loader, val_loader, num_epochs=20, patience=5, lr=1
         if steps_since_improvement >= patience:
             print(f"Early stopping triggered after {steps_since_improvement} epochs without improvement.")
             break
-
-    if plot_loss:
-        plt.figure(figsize=(10, 5))
-        plt.plot(train_losses, label='Train Loss')
-        plt.plot(val_losses, label='Val Loss')
-        plt.xlabel('Epoch')
-        plt.ylabel('Loss')
-        plt.title('Training and Validation Loss')
-        plt.legend()
-        plt.show()
     
     model.load_state_dict(best_model_state)
+    print('Times:')
+    total_time = data_time + inference_time + backprop_time + val_data_time + val_inference_time
+    print(f"Total (covered) epoch time: {total_time:.2f}s")
+    print(f"Data loading time: {data_time:.2f}s, ({100*(data_time/total_time):.2f}%)")
+    print(f"Inference time: {inference_time:.2f}s, ({100*(inference_time/total_time):.2f}%)")
+    print(f"Backpropagation time: {backprop_time:.2f}s, ({100*(backprop_time/total_time):.2f}%)")
+    print(f"Validation data loading time: {val_data_time:.2f}s, ({100*(val_data_time/total_time):.2f}%)")
+    print(f"Validation inference time: {val_inference_time:.2f}s, ({100*(val_inference_time/total_time):.2f}%)")
     return model
 
 def score_function(y, kde, delta=1e-5):
@@ -287,7 +337,7 @@ if __name__ == '__main__':
         help='Which loss function to use', default='mse')
     parser.add_argument('--batch_size', type=int, help='Batch size', default=128)
     parser.add_argument('--lr', type=float, help='Learning rate', default=1e-4)
-    parser.add_argument('--lambda_r', type=float, help='Regularization weight', default=1e-5)
+    parser.add_argument('--lambda_r', type=float, help='Regularization weight', default=1e-4)
     parser.add_argument('--lambda_b', type=float, help='Quantile MSE loss weight (Only for Ratledge loss)', default=5)
     parser.add_argument('--num_linear_epochs', type=int, help='Number of epochs for linear probe', default=3)
     parser.add_argument('--num_top_epochs', type=int, help='Number of epochs for unfreezing top ResNet block', default=20)
@@ -307,7 +357,13 @@ if __name__ == '__main__':
 
     # Load the dataset
     df = pd.read_csv(os.path.join(DATA_DIR, 'dhs_with_imgs.csv'))
-    img_dir = os.path.join(DATA_DIR, 'dhs_images')
+    # img_dir = os.path.join(DATA_DIR, 'dhs_images')
+    hdf5_path = os.path.join(DATA_DIR, 'dhs_images.h5')
+
+    # Normalize the IWI values
+    mean_iwi = df['iwi'].mean()
+    std_iwi = df['iwi'].std()
+    df['iwi'] = (df['iwi'] - mean_iwi) / std_iwi
 
     # Create equal-sized folds
     folds = ['A', 'B', 'C', 'D', 'E']
@@ -332,7 +388,7 @@ if __name__ == '__main__':
         print(f"Train folds: {train_folds}, Validation fold: {val_fold}, Test fold: {test_fold}")
 
         # Get dataloaders
-        train_dataloader, val_dataloader, test_dataloader = get_dataloaders(df, img_dir, train_folds, val_fold, test_fold, batch_size=args.batch_size)
+        train_dataloader, val_dataloader, test_dataloader = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=args.batch_size)
 
         # Initialize model
         model = init_model()
@@ -372,7 +428,7 @@ if __name__ == '__main__':
         train_folds = [f for f in folds if f not in [test_fold, val_fold]]
 
         # Get dataloaders
-        _, _, test_dataloader = get_dataloaders(df, img_dir, train_folds, val_fold, test_fold, batch_size=args.batch_size)
+        _, _, test_dataloader = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=args.batch_size)
 
         # Load model
         model = init_model()
@@ -389,8 +445,9 @@ if __name__ == '__main__':
                 outputs = model(inputs).squeeze()
                 test_predictions.extend(outputs.cpu().numpy())
                 test_targets.extend(targets.cpu().numpy())
-        test_predictions = np.array(test_predictions) * 100  # Scale back to original range
-        test_targets = np.array(test_targets) * 100  # Scale back to original range
+        # Scale back to original range
+        test_predictions = np.array(test_predictions) * std_iwi + mean_iwi
+        test_targets = np.array(test_targets) * std_iwi + mean_iwi
 
         # Store predictions in the dataframe
         fold_ixs = df['cv_fold'] == test_fold
@@ -418,7 +475,7 @@ if __name__ == '__main__':
         print(f"Train folds: {train_folds}, Validation/Calibration fold: {val_fold}")
 
         # Get dataloaders
-        train_dataloader, val_dataloader, _ = get_dataloaders(df, img_dir, train_folds, val_fold, test_fold, batch_size=args.batch_size)
+        train_dataloader, val_dataloader, _ = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=args.batch_size)
 
         # Load model
         model = init_model()
@@ -435,8 +492,9 @@ if __name__ == '__main__':
                 outputs = model(inputs).squeeze()
                 train_predictions.extend(outputs.cpu().numpy())
                 train_targets.extend(targets.cpu().numpy())
-        train_predictions = np.array(train_predictions) * 100  # Scale back to original range
-        train_targets = np.array(train_targets) * 100  # Scale back to original range
+        # Scale back to original range
+        train_predictions = np.array(train_predictions) * std_iwi + mean_iwi
+        train_targets = np.array(train_targets) * std_iwi + mean_iwi
 
         val_predictions = []
         val_targets = []
@@ -446,8 +504,9 @@ if __name__ == '__main__':
                 outputs = model(inputs).squeeze()
                 val_predictions.extend(outputs.cpu().numpy())
                 val_targets.extend(targets.cpu().numpy())
-        val_predictions = np.array(val_predictions) * 100  # Scale back to original range
-        val_targets = np.array(val_targets) * 100  # Scale back to original range
+        # Scale back to original range
+        val_predictions = np.array(val_predictions) * std_iwi + mean_iwi
+        val_targets = np.array(val_targets) * std_iwi + mean_iwi
 
         # Get value for Linear Correlation Correction (LCC)
         train_lcc_regressor = LinearRegression()

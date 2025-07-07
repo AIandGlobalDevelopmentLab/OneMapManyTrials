@@ -1,0 +1,18 @@
+--loss=mse
+--loss=ratledge --lambda_b=1
+--loss=ratledge --lambda_b=3
+--loss=ratledge --lambda_b=5
+--loss=ratledge --lambda_b=7.5
+--loss=ratledge --lambda_b=10
+--loss=mse --num_top_epochs=0 --num_full_epochs=20
+--loss=ratledge --lambda_b=1 --num_top_epochs=0 --num_full_epochs=20
+--loss=ratledge --lambda_b=3 --num_top_epochs=0 --num_full_epochs=20
+--loss=ratledge --lambda_b=5 --num_top_epochs=0 --num_full_epochs=20
+--loss=ratledge --lambda_b=7.5 --num_top_epochs=0 --num_full_epochs=20
+--loss=ratledge --lambda_b=10 --num_top_epochs=0 --num_full_epochs=20
+--loss=mse --num_linear_epochs=30 --num_top_epochs=0
+--loss=ratledge --lambda_b=1 --num_linear_epochs=30 --num_top_epochs=0
+--loss=ratledge --lambda_b=3 --num_linear_epochs=30 --num_top_epochs=0
+--loss=ratledge --lambda_b=5 --num_linear_epochs=30 --num_top_epochs=0
+--loss=ratledge --lambda_b=7.5 --num_linear_epochs=30 --num_top_epochs=0
+--loss=ratledge --lambda_b=10 --num_linear_epochs=30 --num_top_epochs=0
