@@ -76,24 +76,6 @@ def init_model():
 
     return model
 
-'''class RegressionDataset(Dataset):
-    def __init__(self, df, img_dir, transform=None):
-        self.df = df.reset_index(drop=True)
-        self.img_dir = img_dir
-        self.transform = transform
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        cluster_id = self.df.iloc[idx]['cluster_id']
-        img_path = os.path.join(self.img_dir, cluster_id, 'landsat.np')
-        img = np.load(img_path)
-        target = self.df.iloc[idx]['iwi']
-        if self.transform:
-            img = self.transform(img)
-        return img, target'''
-
 class RegressionDataset(Dataset):
     def __init__(self, df, hdf5_path, transform=None):
         self.df = df.reset_index(drop=True)
@@ -164,44 +146,41 @@ def unfreeze_layers(model, layers: list):
                 param.requires_grad = True
 
 class RatledgeLoss(nn.Module):
-    def __init__(self, lambda_b=5):
+    def __init__(self, quants, lambda_b=5.0):
+        """
+        Args:
+          quants: 1-D Tensor of shape (6,) giving the 0%,20%,…,100% IWI cut-points
+                  computed once on the full training set.
+          lambda_b: weight on the max-bias penalty
+        """
         super().__init__()
+        self.register_buffer('quants', quants)  
         self.lambda_b = lambda_b
 
     def forward(self, y_pred, y_true):
-
-        # Calculate regular MSE
+        # 1) Standard MSE on the whole batch
         mse = nn.functional.mse_loss(y_pred, y_true)
 
-        # Get the quintile boundaries (0%, 20%, 40%, 60%, 80%, 100%)
-        quantiles = torch.quantile(y_true, torch.tensor([0.0, 0.2, 0.4, 0.6, 0.8, 1.0]).cuda())
-
-        max_quintile_mse = torch.tensor(float('-inf')).cuda()
-
-        for i in range(5):
-            lower = quantiles[i]
-            upper = quantiles[i+1]
-            
-            # Create mask for current quintile
-            if i < 4:
-                mask = (y_true >= lower) & (y_true < upper)
+        # 2) Compute squared bias per quintile, take the max
+        max_bias2 = torch.tensor(0., device=y_true.device)
+        for j in range(5):
+            lo, hi = self.quants[j], self.quants[j+1]
+            if j < 4:
+                mask = (y_true >= lo) & (y_true < hi)
             else:
-                mask = (y_true >= lower) & (y_true <= upper)
+                mask = (y_true >= lo) & (y_true <= hi)
 
-            # Calculate MSE for the current quintile
-            if mask.sum() > 0:
-                quantile_mse = nn.functional.mse_loss(y_pred[mask], y_true[mask])
-            else:
-                quantile_mse = torch.tensor(float('-inf')).cuda()  # So it won't affect max if empty
+            if mask.any():
+                bias_j = (y_pred[mask] - y_true[mask]).mean()
+                bias2_j = bias_j.pow(2)
+                max_bias2 = torch.max(max_bias2, bias2_j)
 
-            if quantile_mse > max_quintile_mse:
-                max_quintile_mse = quantile_mse
+        return mse + self.lambda_b * max_bias2
 
-        return mse + self.lambda_b * max_quintile_mse
 
 def train_model(model, train_loader, val_loader, num_epochs=20, patience=5, lr=1e-4, 
-    loss='mse', lambda_r=1e-5, lambda_b=5, T_0=5, T_mult=2, device=device,
-    freeze_backbone=False, freeze_until=None):
+    loss='mse', lambda_r=1e-5, lambda_b=5, T_0=5, T_mult=2, quantile_values=None,
+    device=device, freeze_backbone=False, freeze_until=None):
     
     # Optionally freeze parts of the model
     if freeze_backbone:
@@ -225,7 +204,10 @@ def train_model(model, train_loader, val_loader, num_epochs=20, patience=5, lr=1
     if loss == 'mse':
         criterion = nn.MSELoss()
     elif loss == 'ratledge':
-        criterion = RatledgeLoss(lambda_b)
+        if quantile_values is None:
+            raise ValueError("Quantile values must be provided for Ratledge loss.")
+        quants_tensor = torch.tensor(quantile_values, dtype=torch.float32).to(device)
+        criterion = RatledgeLoss(quants=quants_tensor, lambda_b=lambda_b)
     else:
         raise ValueError(f"Unsupported loss function: {loss}")
     
@@ -387,6 +369,9 @@ if __name__ == '__main__':
         train_folds = [f for f in folds if f not in [test_fold, val_fold]]
         print(f"Train folds: {train_folds}, Validation fold: {val_fold}, Test fold: {test_fold}")
 
+        # Get quantile values for train set (only used for Ratledge loss)
+        quantile_values = np.quantile(df[df['cv_fold'].isin(train_folds)]['iwi'].values, [0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
+
         # Get dataloaders
         train_dataloader, val_dataloader, test_dataloader = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=args.batch_size)
 
@@ -398,21 +383,24 @@ if __name__ == '__main__':
             print('Skipping linear probe phase as num_linear_epochs is set to 0.')
         else:
             model = train_model(model, train_dataloader, val_dataloader, num_epochs=args.num_linear_epochs, 
-            loss=args.loss, lambda_r=args.lambda_r, lambda_b=args.lambda_b, freeze_backbone=True, device=device)
+            loss=args.loss, lambda_r=args.lambda_r, lambda_b=args.lambda_b, quantile_values=quantile_values,
+            freeze_backbone=True, device=device)
 
         print('==== Phase 2 — unfreeze top ResNet block ====')
         if args.num_top_epochs == 0:
             print('Skipping top block training phase as num_top_epochs is set to 0.')
         else:
             model = train_model(model, train_dataloader, val_dataloader, num_epochs=args.num_top_epochs, 
-            loss=args.loss, lambda_r=args.lambda_r, lambda_b=args.lambda_b, freeze_until=['layer4', 'fc'])
+            loss=args.loss, lambda_r=args.lambda_r, lambda_b=args.lambda_b, quantile_values=quantile_values,
+            freeze_until=['layer4', 'fc'], device=device)
 
         print('==== Phase 3 — unfreeze all layers ====')
         if args.num_full_epochs == 0:
             print('Skipping full training phase as num_full_epochs is set to 0.')
         else:
             model = train_model(model, train_dataloader, val_dataloader, num_epochs=args.num_full_epochs, 
-                loss=args.loss, lambda_r=args.lambda_r, lambda_b=args.lambda_b, device=device)
+                loss=args.loss, lambda_r=args.lambda_r, lambda_b=args.lambda_b, quantile_values=quantile_values,
+                device=device)
 
         # Save the model
         torch.save(model.state_dict(), os.path.join(SAVE_DIR, f'model_fold_{fold}.pth'))
