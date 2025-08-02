@@ -22,7 +22,7 @@ RANDOM_STATE = 42
 N_COMPONENTS = 232
 
 
-def load_data():
+def load_data(include_rural=False):
 
     # Read config file
     config = configparser.ConfigParser()
@@ -45,16 +45,25 @@ def load_data():
 
     y = df['iwi'].values / 100.0 # Scale IWI to [0, 1]
     y = y.clip(0, 1)
+    
+    t = df['rural']
 
     X = torch.tensor(X, dtype=torch.float).cuda()
     y = torch.tensor(y, dtype=torch.float).cuda()
     
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
-    X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=RANDOM_STATE)
-    #X_cal, X_val, y_cal, y_val = train_test_split(X_val, y_val, test_size=0.5, random_state=RANDOM_STATE)
+    if include_rural: 
+        t = df['rural']
     
-    #return X_train, X_val, X_cal, X_test, y_train, y_val, y_cal, y_test
-    return X_train, X_val, X_test, y_train, y_val, y_test
+        X_train, X_test, y_train, y_test, t_train, t_test = train_test_split(X, y, t, test_size=0.2, random_state=RANDOM_STATE)
+        X_train, X_val, y_train, y_val, t_train, t_val = train_test_split(X_train, y_train, t_train, test_size=0.2, random_state=RANDOM_STATE)
+        
+        return X_train, X_val, X_test, y_train, y_val, y_test, t_train, t_val, t_test
+    else:
+    
+        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=RANDOM_STATE)
+        X_train, X_val, y_train, y_val = train_test_split(X_train, y_train, test_size=0.2, random_state=RANDOM_STATE)
+
+        return X_train, X_val, X_test, y_train, y_val, y_test
 
 
 # Main regression model
@@ -95,6 +104,46 @@ class RegressionModel(nn.Module):
     
     def forward(self, x):
         return self.fc(x).squeeze()
+    
+class HeteroscedasticRegressionModel(nn.Module):
+    def __init__(self, size='M'):
+        super(HeteroscedasticRegressionModel, self).__init__()
+        
+        if size == 'S':
+            self.fc = nn.Sequential(
+                nn.Linear(N_COMPONENTS, 64),
+                nn.ReLU(),
+                nn.Linear(64, 32),
+                nn.ReLU()
+            )
+        elif size == 'M':
+            self.fc = nn.Sequential(
+                nn.Linear(N_COMPONENTS, 64),
+                nn.ReLU(),
+                nn.Linear(64, 32),
+                nn.ReLU(),
+                nn.Linear(32, 32),
+                nn.ReLU()
+            )
+        elif size == 'L':
+            self.fc = nn.Sequential(
+                nn.Linear(N_COMPONENTS, 128),
+                nn.ReLU(),
+                nn.Linear(128, 64),
+                nn.ReLU(),
+                nn.Linear(64, 32),
+                nn.ReLU(),
+                nn.Linear(32, 32),
+                nn.ReLU()
+            )
+        self.mean_head = nn.Linear(32, 1)
+        self.log_var_head = nn.Linear(32, 1)  # Predict log(σ²) for numerical stability
+    
+    def forward(self, x):
+        features = self.fc(x)
+        mu = self.mean_head(features)
+        log_var = self.log_var_head(features)
+        return mu, log_var
     
     
 # -------------------
@@ -152,6 +201,62 @@ def train_model(X_train, X_val, y_train, y_val, loss_fn, lr=1e-3, l2=1e-5, base_
 
     # Instantiate model
     main_model = base_model if base_model else RegressionModel(model_size).cuda()
+
+    # Optimizer
+    main_optimizer = optim.Adam(main_model.parameters(), lr=lr, weight_decay=l2)
+    
+    train_history = []
+    val_history = []
+    
+    best_model = main_model.state_dict()
+    best_loss = np.inf
+    best_epoch = 0
+    
+    # Training loop
+    max_epochs = 50000
+    for epoch in tqdm(range(max_epochs), disable=verbose<1):
+
+        # Train main model
+        main_optimizer.zero_grad()
+        y_pred = main_model(X_train)
+        loss, log_object = loss_fn(y_pred, y_train)
+        loss.backward()
+        main_optimizer.step()
+        
+        train_history.append(log_object)
+        
+        with torch.no_grad():
+            y_pred = main_model(X_val)
+            loss, log_object = loss_fn(y_pred, y_val)
+        
+            val_history.append(log_object)
+            
+            # Save best model
+            if loss < best_loss:
+                best_model = main_model.state_dict()
+                best_loss = loss.item()
+                best_epoch = epoch
+            
+            # Early stopping
+            if epoch - best_epoch > 200:
+                break
+                
+    if best_epoch == epoch:
+        print('Terminated before early stopping.')
+            
+    if verbose:
+        plot_history(train_history, val_history, model_name)
+    
+    # Load best model
+    main_model.load_state_dict(best_model)
+    return main_model
+
+def train_heteroscedastic_model(X_train, X_val, y_train, y_val, lr=1e-3, l2=1e-5, base_model=None, model_size='M', model_name=None, verbose=1):
+    
+    torch.manual_seed(RANDOM_STATE)
+
+    # Instantiate model
+    main_model = base_model if base_model else HeteroscedasticRegressionModel(model_size).cuda()
 
     # Optimizer
     main_optimizer = optim.Adam(main_model.parameters(), lr=lr, weight_decay=l2)
@@ -299,8 +404,8 @@ def parity_plot(targets, predictions, title=None, ax=None):
 
     ax.plot(x, ideal_y, 'k--', label='Ideal')
     ax.plot(x, true_y, c=sns.color_palette()[1], label='Fitted')
-    ax.set_xlabel('Targets')
-    ax.set_ylabel('Predictions')
+    ax.set_xlabel('Observed (IWI)')
+    ax.set_ylabel('Predicted (IWI)')
     ax.set_title(title)
     ax.legend()
 
@@ -330,8 +435,8 @@ def resid_plot(targets, predictions, title, ax=None):
 
     ax.scatter(targets, (targets - predictions), alpha=0.2)
     ax.axhline(0, ls=":", c=".2")
-    ax.set_xlabel('Targets')
-    ax.set_ylabel('Residuals')
+    ax.set_xlabel('Observed (IWI)')
+    ax.set_ylabel('Residuals (IWI)')
     ax.set_title(title)
 
     if should_plot:

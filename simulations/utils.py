@@ -5,9 +5,6 @@ from scipy.stats import norm
 from sklearn.utils import resample
 from tqdm import tqdm
 
-# -----------------------------------------------------------------------------
-# 1. Data simulation and population generation functions
-# -----------------------------------------------------------------------------
 def generate_population(img_proxy_func, n_samples=10000, tau=0.2, alpha=1.0, sigma_Y=1.0, sigma_X=5.0, seed=42):
     """
     Generates a synthetic population for causal inference simulations.
@@ -57,9 +54,6 @@ def generate_population(img_proxy_func, n_samples=10000, tau=0.2, alpha=1.0, sig
 
     return population
 
-# -----------------------------------------------------------------------------
-# 2. Regression model, training, and calibration functions
-# -----------------------------------------------------------------------------
 class CDF_model:
     
     def __init__(self):
@@ -67,8 +61,7 @@ class CDF_model:
         
     def fit(self, X_train, y_train):
         
-        # Use unconstrained OLS as initial guess for beta
-        beta_ols = self.biased_model.fit(X_train, y_train)
+        self.biased_model.fit(X_train, y_train)
         
     def calibrate(self, X_cal, y_cal):
         
@@ -99,16 +92,13 @@ class CDF_model:
         y_pred = self.point_predict(X_test)
         
         # Repeat the predictions to match the number of residuals
-        y_pred = np.repeat(y_pred[:, np.newaxis], len(self.residuals), axis=1)
+        y_pred = y_pred[:, np.newaxis] + self.residuals
         
         # Add the sorted residuals to the predictions. This will give us a distribution of predictions
         y_pred += self.residuals
         
         return y_pred
 
-# -----------------------------------------------------------------------------
-# 3. ATE estimation helper functions
-# -----------------------------------------------------------------------------
 def get_ate(t, y_preds, p_t):
     """
     Calculate the Average Treatment Effect (ATE) using Inverse Probability of Treatment Weighting (IPTW).
