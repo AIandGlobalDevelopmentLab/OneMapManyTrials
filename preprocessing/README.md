@@ -29,3 +29,5 @@ python 1_process_dhs_data.py
 This results in the file `dhs_data.csv` in your data directory.
 
 ## Landsat data
+
+To download the satellite data, run the notebook `2_landsat_exporter.ipynb`. The resulting dataset (about 33 GB in size) will be stored in the data directory as a `.np` file for each DHS cluster.
