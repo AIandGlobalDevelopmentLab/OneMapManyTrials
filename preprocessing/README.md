@@ -30,4 +30,6 @@ This results in the file `dhs_data.csv` in your data directory.
 
 ## Landsat data
 
-To download the satellite data, run the notebook `2_landsat_exporter.ipynb`. The resulting dataset (about 33 GB in size) will be stored in the data directory as a `.np` file for each DHS cluster.
+To download the satellite data, run the notebook `2_landsat_exporter.ipynb`. The resulting dataset (about 33 GB in size) will be stored in the data directory as a `.np` file for each DHS cluster. Some of the cluster locations will not have any good satellite images (mostly due to clouding and poor coverage in the 90s), so we drop these in the `3_` notebook before proceeding with the analysis. The resulting CSV file, `dhs_with_imgs.csv` will contain the clusters used in the experiments.
+
+## HDF5 files
