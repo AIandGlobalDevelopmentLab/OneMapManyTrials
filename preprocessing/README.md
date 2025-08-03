@@ -10,9 +10,7 @@ This project relies on the [DHSHarmonisation package](https://bitbucket.org/hans
 > 
 > Due to the current government freeze of the DHS Program, the organization has **paused the creation of new user accounts**. This means that if you do not already have an authorized DHS account, you will not be able to register for one and therefore cannot download the survey data through this workflow.
 >
-> Additionally, due to legal and licensing restrictions, we are unable to share the exported DHS datasets directly. Redistribution of these datasets is prohibited by the DHS Program.
->
-> We have *not* reattempted the data export process since the DHS Program changes took effect, so compatibility with the current system is not guaranteed.
+> Additionally, due to licensing restrictions, we are unable to share the exported DHS datasets directly. Redistribution of these datasets is prohibited by the DHS Program.
 
 You then run:
 
@@ -30,6 +28,8 @@ This results in the file `dhs_data.csv` in your data directory.
 
 ## Landsat data
 
-To download the satellite data, run the notebook `2_landsat_exporter.ipynb`. The resulting dataset (about 33 GB in size) will be stored in the data directory as a `.np` file for each DHS cluster. Some of the cluster locations will not have any good satellite images (mostly due to clouding and poor coverage in the 90s), so we drop these in the `3_` notebook before proceeding with the analysis. The resulting CSV file, `dhs_with_imgs.csv` will contain the clusters used in the experiments.
+To download the satellite data, run the notebook `2_landsat_exporter.ipynb`. The resulting dataset (about 32 GB in size) will be stored in the data directory as a `.np` file for each DHS cluster. Some of the cluster locations will not have any good satellite images (mostly due to clouding and poor coverage in the 90s), so we drop these in the `3_find_bad_images.ipynb` notebook before proceeding with the analysis. The resulting CSV file, `dhs_with_imgs.csv` will contain the clusters used in the experiments.
 
 ## HDF5 files
+
+In order to speed up the training pipeline, we convert the dataset into the HDF5 format. This will require an additional 33 GB of storage, but greatly speeds up processing times. This is done byt running the script `4_write_hdf5.sh`.
