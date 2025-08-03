@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-#SBATCH -A naiss2024-5-450 -p alvis
+#SBATCH -A PROJECT_CREDENTIALS
 #SBATCH -N 1
 #SBATCH --gpus-per-node=A100:1
 #SBATCH -t 0-02:00:00

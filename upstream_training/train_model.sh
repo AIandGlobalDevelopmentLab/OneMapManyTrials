@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
-#SBATCH -A naiss2024-5-450 -p alvis
+#SBATCH -A PROJECT_CREDENTIALS
 #SBATCH -N 1
-#SBATCH --gpus-per-node=A100:1  # We’re launching 1 node with 1 Nvidia T4 GPU
+#SBATCH --gpus-per-node=A100:1  # We’re launching 1 node with 1 Nvidia A100 GPU
 #SBATCH -t 0-02:00:00
 # Fetch data from the config.ini file
 
