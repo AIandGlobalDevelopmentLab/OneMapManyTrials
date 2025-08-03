@@ -33,3 +33,6 @@ To download the satellite data, run the notebook `2_landsat_exporter.ipynb`. The
 ## HDF5 files
 
 In order to speed up the training pipeline, we convert the dataset into the HDF5 format. This will require an additional 33 GB of storage, but greatly speeds up processing times. This is done byt running the script `4_write_hdf5.sh`.
+
+## Aid Data
+In our downstream analysis, we use real aid data on [World Bank](https://www.aiddata.org/data/world-bank-geocoded-research-release-level-1-v1-4-2) and [Chinese aid projects](https://www.aiddata.org/data/geocoded-chinese-global-official-finance-dataset), collected by [AidData](https://www.aiddata.org). These are matched to DHS clusters in the same Admin2 regions using GIS data from [GADM](https://gadm.org/). The script `5_aid_data_preparation.py` will prepare this data for use in the analysis. As we are allowed to share this data, the resulting CSV files will be included in the repository `aid_data/interim`.
