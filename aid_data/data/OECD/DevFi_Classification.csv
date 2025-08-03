@@ -1,0 +1,365 @@
+sect_code,sect_code_name,parent_code
+110,Education,
+111,"Education, Level Unspecified",110
+11110,Education policy and administrative management,111
+11120,Education facilities and training,111
+11130,Teacher training,111
+11182,Educational research,111
+112,Basic Education,110
+11220,Primary education,112
+11230,Basic life skills for adults,112
+11231,Basic life skills for youth,112
+11232,Primary education equivalent for adults,112
+11240,Early childhood education,112
+11250,School feeding,112
+11260,Lower secondary education,112
+113,Upper Secondary Education,110
+11320,Upper Secondary Education (modified and includes data from 11322),113
+11330,Vocational training,113
+114,Post-Secondary Education,110
+11420,Higher education,114
+11430,Advanced technical and managerial training,114
+120,Health,
+121,"Health, General",120
+12110,Health policy and administrative management,121
+12110,Health statistics and data,121
+12181,Medical education/training,121
+12182,Medical research,121
+12191,Medical services,121
+122,Basic Health,120
+12220,Basic health care,122
+12230,Basic health infrastructure,122
+12240,Basic nutrition,122
+12250,Infectious disease control,122
+12261,Health education,122
+12262,Malaria control,122
+12263,Tuberculosis control,122
+12264,COVID-19 control,122
+12281,Health personnel development,122
+123,Non-communicable diseases (NCDs),
+12310,"NCDs control, general",123
+12320,Tobacco use control,123
+12330,Control of harmful use of alcohol and drugs,123
+12340,Promotion of mental health and well-being,123
+12350,Other prevention and treatment of NCDs,123
+12382,Research for prevention and control of NCDs,123
+130,Population Policies/Programmes and Reproductive Health,
+13010,Population policy and administrative management,130
+13010,Population statistics and data,130
+13020,Reproductive health care,130
+13030,Family planning,130
+13040,STD control including HIV/AIDS,130
+13081,Personnel development for population and reproductive health,130
+140,Water Supply and Sanitation,
+14010,Water sector policy and administrative management,140
+14015,Water resources conservation (including data collection),140
+14020,Water supply and sanitation - large systems,140
+14021,Water supply - large systems,140
+14022,Sanitation - large systems,140
+14030,Basic drinking water supply and basic sanitation,140
+14031,Basic drinking water supply,140
+14032,Basic sanitation,140
+14040,River basins development,140
+14050,Waste management/disposal,140
+14081,Education and training in water supply and sanitation,140
+150,Government and Civil Society,
+151,Government and Civil Society - general,150
+15110,Public sector policy and administrative management,151
+15110,Foreign affairs,151
+15110,Diplomatic missions,151
+15110,Administration of developing countries' foreign aid,151
+15110,General personnel services,151
+15110,Other general public services,151
+15110,National monitoring and evaluation,151
+15110,Meteorological services,151
+15110,National standards development,151
+15110,Executive office,151
+15110,Government and civil society statistics and data,151
+15111,Public finance management (PFM),151
+15111,Budget planning,151
+15111,National audit,151
+15111,Debt and aid management,151
+15112,Decentralisation and support to subnational government,151
+15112,Local government finance,151
+15112,Other central transfers to institutions,151
+15112,Local government administration,151
+15113,Anti-corruption organisations and institutions,151
+15114,Domestic revenue mobilisation,151
+15114,Tax collection,151
+15114,Tax policy and administration support,151
+15114,Other non-tax revenue mobilisation,151
+15125,Public Procurement,151
+15130,Legal and judicial development,151
+15130,"Justice, law and order policy, planning and administration",151
+15130,Police,151
+15130,Fire and rescue services,151
+15130,Judicial affairs,151
+15130,Ombudsman,151
+15130,Immigration,151
+15130,Prisons,151
+1513010,Fight against transnational organised crime,151
+1513020,Countering violent extremism,151
+1513030,Cyber security,151
+15142,Macroeconomic policy,151
+15150,Democratic participation and civil society,151
+15151,Elections,151
+15152,Legislatures and political parties,151
+15153,Media and free flow of information,151
+15160,Human rights,151
+1516010,Transitional justice,151
+1516020,International criminal justice,151
+15170,"Women's rights organisations and movements, and government institutions",151
+15180,Ending violence against women and girls,151
+15190,"Facilitation of orderly, safe, regular and responsible migration and mobility",151
+152,"Conflict, Peace and Security",150
+152,"Conflict, Peace & Security",150
+1520010,Disarmament of Weapons of Mass Destruction (WMD),152
+1520020,Prevention of Violent Extremism,152
+15210,Security system management and reform,152
+15220,"Civilian peace-building, conflict prevention and resolution",152
+15230,Participation in international peacekeeping operations,152
+15230,Participation in international peacekeeping operations,152
+15240,Reintegration and SALW control,152
+15240,Reintegration and SALW control,152
+15250,Removal of land mines and explosive remnants of war,152
+15250,Removal of land mines and explosive remnants of war,152
+15261,Child soldiers (prevention and demobilisation),152
+160,Other Social Infrastructure and Services,
+16010,Social Protection,160
+16010,"Social protection and welfare services policy, planning and administration",160
+16010,Social security (excl pensions),160
+16010,General pensions,160
+16010,Civil service pensions,160
+16010,Social services (incl youth development and women+ children),160
+16020,Employment creation,160
+16030,Housing policy and administrative management,160
+16040,Low-cost housing,160
+16050,Multisector aid for basic social services,160
+16061,Culture and recreation,160
+16061,Recreation and sport,160
+16061,Culture,160
+16062,Statistical capacity building,160
+16063,Narcotics control,160
+16064,Social mitigation of HIV/AIDS,160
+16070,Labour rights,160
+16080,Social dialogue,160
+210,Transport and Storage,
+21010,Transport policy and administrative management,210
+21010,"Transport policy, planning and administration",210
+21010,Public transport services,210
+21010,Transport regulation,210
+21020,Road transport,210
+21020,Feeder road construction,210
+21020,Feeder road maintenance,210
+21020,National road construction,210
+21020,National road maintenance,210
+21030,Rail transport,210
+21040,Water transport,210
+21050,Air transport,210
+21061,Storage,210
+21081,Education and training in transport and storage,210
+220,Communications,
+22010,Communications policy and administrative management,220
+22010,"Communications policy, planning and administration",220
+22010,Postal services,220
+22010,Information services,220
+22020,Telecommunications,220
+22030,Radio/television/print media,220
+22040,Information and communication technology (ICT),220
+230,Energy,
+231,Energy Policy,
+23110,Energy policy and administrative management,231
+23110,"Energy sector policy, planning and administration",231
+23110,Energy regulation,231
+23181,Energy education/training,231
+23182,Energy research,231
+23183,Energy conservation and demand-side efficiency,231
+232,"Energy generation, renewable sources",
+23210,"Energy generation, renewable sources - multiple technologies",232
+23220,Hydro-electric power plants,232
+23230,Solar energy for centralised grids,232
+23231,Solar energy for isolated grids and standalone systems,232
+23232,Solar energy - thermal applications,232
+23240,Wind energy,232
+23250,Marine energy,232
+23260,Geothermal energy,232
+23270,Biofuel-fired power plants,232
+233,"Energy generation, non-renewable sources",
+23310,"Energy generation, non-renewable sources, unspecified",233
+23320,Coal-fired electric power plants,233
+23330,Oil-fired electric power plants,233
+23340,Natural gas-fired electric power plants,233
+23350,Fossil fuel electric power plants with carbon capture and storage (CCS),233
+23360,Non-renewable waste-fired electric power plants,233
+234,Hybrid energy plants,
+23410,Hybrid energy electric power plants,234
+235,Nuclear energy plants,
+23510,Nuclear energy electric power plants and nuclear safety,235
+236,Energy distribution,
+23610,Heat plants,236
+23620,District heating and cooling,236
+23630,Electric power transmission and distribution (centralised grids),236
+23631,Electric power transmission and distribution (isolated mini-grids),236
+23640,Retail gas distribution,236
+23641,Retail distribution of liquid or solid fossil fuels,236
+23642,Electric mobility infrastructures,236
+240,Banking and Financial Services,
+24010,Financial policy and administrative management,240
+24020,Monetary institutions,240
+24030,Formal sector financial intermediaries,240
+24040,Informal/semi-formal financial intermediaries,240
+24050,"Remittance facilitation, promotion and optimisation",240
+24081,Education/training in banking and financial services,240
+250,Business and Other Services,
+25010,Business policy and administration,250
+25020,Privatisation,250
+25030,Business development services,250
+25040,Responsible business conduct,250
+310,"Agriculture, Forestry, Fishing",
+311,Agriculture,310
+31110,Agricultural policy and administrative management,311
+31120,Agricultural development,311
+31130,Agricultural land resources,311
+31140,Agricultural water resources,311
+31150,Agricultural inputs,311
+31161,Food crop production,311
+31162,Industrial crops/export crops,311
+31163,Livestock,311
+31164,Agrarian reform,311
+31165,Agricultural alternative development,311
+31166,Agricultural extension,311
+31181,Agricultural education/training,311
+31182,Agricultural research,311
+31191,Agricultural services,311
+31192,Plant and post-harvest protection and pest control,311
+31193,Agricultural financial services,311
+31194,Agricultural co-operatives,311
+31195,Livestock/veterinary services,311
+312,Forestry,310
+31210,Forestry policy and administrative management,312
+31220,Forestry development,312
+31261,Fuelwood/charcoal,312
+31281,Forestry education/training,312
+31282,Forestry research,312
+31291,Forestry services,312
+313,Fishing,
+31310,Fishing policy and administrative management,313
+31320,Fishery development,313
+31381,Fishery education/training,313
+31382,Fishery research,313
+31391,Fishery services,313
+320,"Industry, Mining, Construction",
+321,Industry,320
+32110,Industrial policy and administrative management,321
+32120,Industrial development,321
+32130,Small and medium-sized enterprises (SME) development,321
+32140,Cottage industries and handicraft,321
+32161,Agro-industries,321
+32162,Forest industries,321
+32163,"Textiles, leather and substitutes",321
+32164,Chemicals,321
+32165,Fertilizer plants,321
+32166,Cement/lime/plaster,321
+32167,Energy manufacturing (fossil fuels),321
+32168,Pharmaceutical production,321
+32169,Basic metal industries,321
+32170,Non-ferrous metal industries,321
+32171,Engineering,321
+32172,Transport equipment industry,321
+32173,Modern biofuels manufacturing,321
+32174,Clean cooking appliances manufacturing,321
+32182,Technological research and development,321
+322,Mineral Resources and Mining,320
+32210,Mineral/mining policy and administrative management,322
+32220,Mineral prospection and exploration,322
+32261,Coal,322
+32262,Oil and gas (upstream),322
+32263,Ferrous metals,322
+32264,Nonferrous metals,322
+32265,Precious metals/materials,322
+32266,Industrial minerals,322
+32267,Fertilizer minerals,322
+32268,Offshore minerals,322
+323,Construction,
+32310,Construction policy and administrative management,323
+331,Trade Policies and Regulations,330
+33110,Trade policy and administrative management,331
+33120,Trade facilitation,331
+33130,Regional trade agreements (RTAs),331
+33140,Multilateral trade negotiations,331
+33150,Trade-related adjustment,331
+33181,Trade education/training,331
+332,Tourism,
+33210,Tourism policy and administrative management,332
+410,General Environment Protection,
+41010,Environmental policy and administrative management,410
+41020,Biosphere protection,410
+41030,Biodiversity,410
+41040,Site preservation,410
+41081,Environmental education/training,410
+41082,Environmental research,410
+430,Other Multisector,
+43010,Multisector aid,430
+43030,Urban development and management,430
+43030,Urban land policy and management,430
+43030,Urban development,430
+43040,Rural development,430
+43040,Rural land policy and management,430
+43040,Rural development,430
+43050,Non-agricultural alternative development,430
+43060,Disaster Risk Reduction,430
+43071,Food security policy and administrative management,430
+43072,Household food security programmes,430
+43073,Food safety and quality,430
+43081,Multisector education/training,430
+43082,Research/scientific institutions,430
+510,General Budget Support,
+51010,General budget support-related aid,510
+520,Development Food Assistance,
+52010,Food assistance,520
+530,Other Commodity Assistance,
+53030,Import support (capital goods),530
+53040,Import support (commodities),530
+600,Action Relating to Debt,
+60010,Action relating to debt,600
+60020,Debt forgiveness,600
+60030,Relief of multilateral debt,600
+60040,Rescheduling and refinancing,600
+60061,Debt for development swap,600
+60062,Other debt swap,600
+60063,Debt buy-back,600
+720,Emergency Response,
+72010,Material relief assistance and services ,720
+72010,Basic Health Care Services in Emergencies,720
+72010,Education in emergencies,720
+72040,Emergency food assistance,720
+72050,Relief co-ordination and support services,720
+730,Reconstruction and Rehabilitation,
+73010,Immediate post-emergency reconstruction and rehabilitation,730
+740,Disaster Preparedness,
+74020,Multi-hazard response preparedness,740
+910,Administrative Costs of Donors,
+91010,Administrative costs (non-sector allocable),910
+930,Refugees/Asylum Seekers in Donor Countries,
+93010,Refugees/asylum seekers  in donor countries (non-sector allocable),930
+93010,Refugees/asylum seekers  in donor countries (non-sector allocable),930
+93010,Refugees/asylum seekers in donor countries - food and shelter ,930
+93010,Refugees/asylum seekers in donor countries - food and shelter ,930
+93010,Refugees/asylum seekers in donor countries - training,930
+93010,Refugees/asylum seekers in donor countries - training,930
+93010,Refugees/asylum seekers in donor countries - health,930
+93010,Refugees/asylum seekers in donor countries - health,930
+93010,Refugees/asylum seekers in donor countries - other temporary sustenance,930
+93010,Refugees/asylum seekers in donor countries - other temporary sustenance,930
+93010,Refugees/asylum seekers in donor countries - voluntary repatriation,930
+93010,Refugees/asylum seekers in donor countries - voluntary repatriation,930
+93010,Refugees/asylum seekers in donor countries - transport,930
+93010,Refugees/asylum seekers in donor countries - transport,930
+93010,Refugees/asylum seekers in donor countries - rescue at sea,930
+93010,Refugees/asylum seekers in donor countries - rescue at sea,930
+93010,Refugees/asylum seekers in donor countries - administrative costs,930
+93010,Refugees/asylum seekers in donor countries - administrative costs,930
+998,Unallocated / Unspecified,
+99810,Sectors not specified,998
+99820,Promotion of development awareness (non-sector allocable),998
+330,Trade and Tourism,
