@@ -1,9 +1,15 @@
-# One Map, Many Trials
+# Debiasing Machine Learning Predictions for Causal Inference Without Additional Ground Truth Data: “One Map, Many Trials” in Satellite-Driven Poverty Analysis
 
-To try out estimating an ATE using our pipeline on simulated data, run the script `simulations/run_simulation` with your selected parameters.
+Machine learning models trained on Earth observation data, such as satellite imagery, have demonstrated significant promise in predicting household-level wealth indices, enabling the creation of high-resolution wealth maps that can be leveraged across multiple causal trials while addressing chronic data scarcity in global development research. However, because standard training objectives prioritize overall predictive accuracy, these predictions inherently suffer from shrinkage toward the mean, leading to attenuated estimates of causal treatment effects and limiting their utility in policy evaluations. Existing debiasing methods, such as Prediction-Powered Inference (PPI), can handle this attenuation bias but require additional fresh ground-truth data at the downstream stage of causal inference, which restricts their applicability in data-scarce environments. In this paper, we introduce and evaluate two correction methods—linear calibration correction and Tweedie's correction—that substantially reduce prediction bias without relying on newly collected labeled data. Linear calibration (LCC) corrects bias through a straightforward linear transformation derived from held-out calibration data, whereas Tweedie's correction leverages empirical Bayes principles to directly address shrinkage-induced biases by exploiting score functions derived from evaluating the model's learning patterns. Through analytical exercises and experiments using Demographic and Health Survey (DHS) data, we demonstrate that both proposed methods meet or outperform existing approaches that either require **(a)** adjustments to training pipelines or **(b)** additional labeled data, achieving significant reductions in attenuation bias in data-scarce environments. These approaches may represent a promising avenue for improving the reliability of causal inference when direct outcome measures are limited or unavailable, enabling a “One Map, Many Trials” paradigm where a single upstream data creation team produces predictions usable by many downstream teams across diverse ML pipelines.
 
-For running multiple simulation rounds, e.g. in order to validate the empirical coverage of the confidence intervals, you can use the SLURM job-array script `simulations/run_ate_array.sh`. The job array accepts script accepts the same arguments, e.g.
+## Pipeline
 
-`sbatch simulations/run_ate_array.sh --sigma_X=3.0 --n_trial_samples=20000 --tau=0.5`
+1. Start by setting up your `config.ini` file, following the example in `config-sample.ini`. The [Apptainer](https://apptainer.org/) image used in the project can be found in the `apptainer` directory.
 
-Remember to first set up your configuration file `config.ini`, following the example in `config-sample.ini`.
+2. You should now be able to proceed with the downloading and preparation of the data. All code for this is located within the `preprocessing` directory, which contains a readme with more detailed instructions.
+
+3. Once the data is ready, you move on to training the upstream model, as outlined in the `upstream_training` directory.
+
+4. To run the downstream analyses and reproduce the figures in the paper, turn to the `downstream_analyses`directory. As always, more detailed instructions are available in the accompanying readme.
+
+5. The simulations described in the paper can be found in the `simulations` directory. These are not dependent on step 2-4, so feel free to skip these if you are only interested in the simulations.
