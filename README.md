@@ -1,5 +1,20 @@
 # Debiasing Machine Learning Predictions for Causal Inference Without Additional Ground Truth Data: “One Map, Many Trials” in Satellite-Driven Poverty Analysis
 
+This repository contains the code necessary for reproducing the results and figures of the article *Debiasing Machine Learning Predictions for Causal Inference Without Additional Ground Truth Data: "One Map, Many Trials" in Satellite-Driven Poverty Analysis* ([arxiv](https://arxiv.org/abs/2508.01341)).
+
+```
+@misc{pettersson2025debiasingmachinelearningpredictions,
+      title={Debiasing Machine Learning Predictions for Causal Inference Without Additional Ground Truth Data: "One Map, Many Trials" in Satellite-Driven Poverty Analysis}, 
+      author={Markus Pettersson and Connor T. Jerzak and Adel Daoud},
+      year={2025},
+      eprint={2508.01341},
+      archivePrefix={arXiv},
+      primaryClass={stat.ML},
+      url={https://arxiv.org/abs/2508.01341}, 
+}
+```
+
+## Abstract
 Machine learning models trained on Earth observation data, such as satellite imagery, have demonstrated significant promise in predicting household-level wealth indices, enabling the creation of high-resolution wealth maps that can be leveraged across multiple causal trials while addressing chronic data scarcity in global development research. However, because standard training objectives prioritize overall predictive accuracy, these predictions inherently suffer from shrinkage toward the mean, leading to attenuated estimates of causal treatment effects and limiting their utility in policy evaluations. Existing debiasing methods, such as Prediction-Powered Inference (PPI), can handle this attenuation bias but require additional fresh ground-truth data at the downstream stage of causal inference, which restricts their applicability in data-scarce environments. In this paper, we introduce and evaluate two correction methods—linear calibration correction and Tweedie's correction—that substantially reduce prediction bias without relying on newly collected labeled data. Linear calibration (LCC) corrects bias through a straightforward linear transformation derived from held-out calibration data, whereas Tweedie's correction leverages empirical Bayes principles to directly address shrinkage-induced biases by exploiting score functions derived from evaluating the model's learning patterns. Through analytical exercises and experiments using Demographic and Health Survey (DHS) data, we demonstrate that both proposed methods meet or outperform existing approaches that either require **(a)** adjustments to training pipelines or **(b)** additional labeled data, achieving significant reductions in attenuation bias in data-scarce environments. These approaches may represent a promising avenue for improving the reliability of causal inference when direct outcome measures are limited or unavailable, enabling a “One Map, Many Trials” paradigm where a single upstream data creation team produces predictions usable by many downstream teams across diverse ML pipelines.
 
 ## Pipeline
