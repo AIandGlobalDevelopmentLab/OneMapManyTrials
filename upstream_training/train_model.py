@@ -1,4 +1,3 @@
-import timm
 import json
 import os
 import torch
@@ -6,19 +5,17 @@ import pandas as pd
 import numpy as np
 import configparser
 from tqdm import tqdm
-from huggingface_hub import hf_hub_download
 import torch.nn as nn
-from torch.utils.data import Dataset, DataLoader
 from torch.cuda.amp import GradScaler, autocast
-from torchvision import transforms
-import matplotlib.pyplot as plt
-import seaborn as sns
 from sklearn.linear_model import LinearRegression
 from sklearn.metrics import r2_score, mean_absolute_error
 from scipy.stats import gaussian_kde
 import argparse
-import h5py
 from time import time
+
+from utils.data import get_dataloaders
+from utils.modeling import init_model, freeze_all, unfreeze_all, unfreeze_layers, RatledgeLoss
+from utils.misc import get_save_dir_name, score_function
 
 # Read config file
 config = configparser.ConfigParser()
@@ -29,154 +26,6 @@ DATA_DIR = config['PATHS']['DATA_DIR']
 # Set up PyTorch
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 torch.set_float32_matmul_precision("high")
-
-def get_save_dir_name(args):
-    # Define the default values as per argparse
-    defaults = {
-        'loss': 'mse',
-        'batch_size': 128,
-        'lr': 1e-4,
-        'lambda_r': 1e-4,
-        'lambda_b': 5,
-        'num_linear_epochs': 3,
-        'num_top_epochs': 20,
-        'num_full_epochs': 0,
-        'seed': 42
-    }
-
-    # Start with the loss name
-    parts = [args.loss]
-
-    # Iterate over args and compare with defaults
-    for key, default_value in defaults.items():
-        value = getattr(args, key)
-        if value != default_value and key != 'loss':  # Skip 'loss' since it's already added
-            parts.append(f"{key}={value}")
-
-    return '_'.join(parts)
-
-def init_model():
-
-    repo_id = "torchgeo/ssl4eo_landsat"
-    filename = "resnet50_landsat_etm_sr_moco-1266cde3.pth"
-
-    # Download the model weights
-    backbone_path = hf_hub_download(repo_id=repo_id, filename=filename)
-
-    # Create backbone model
-    state_dict = torch.load(backbone_path)
-    model = timm.create_model("resnet50", in_chans=6, num_classes=0)
-    model.load_state_dict(state_dict)
-
-    # Define model with regression head
-    model.fc = nn.Linear(2048, 1)
-
-    # Use channels_last memory format for better performance on GPUs
-    model = model.to(device, memory_format=torch.channels_last)
-
-    return model
-
-class RegressionDataset(Dataset):
-    def __init__(self, df, hdf5_path, transform=None):
-        self.df = df.reset_index(drop=True)
-        self.hdf5_path = hdf5_path
-        self.transform = transform
-        self.h5_file = None  # Will be initialized lazily in __getitem__
-
-    def __len__(self):
-        return len(self.df)
-
-    def __getitem__(self, idx):
-        if self.h5_file is None:
-            self.h5_file = h5py.File(self.hdf5_path, 'r')
-
-        cluster = self.df.iloc[idx]
-        img = self.h5_file[cluster['cluster_id']][:].astype(np.float32)
-        target = cluster['iwi']
-        if self.transform:
-            img = self.transform(img)
-        return img, target
-
-    def __del__(self):
-        if self.h5_file is not None:
-            self.h5_file.close()
-
-def get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=128, num_workers=16):
-
-    # Get the indices for each fold
-    train_folds = df[df['cv_fold'].isin(train_folds)].index.tolist()
-    val_fold = df[df['cv_fold'] == val_fold].index.tolist()
-    test_fold = df[df['cv_fold'] == test_fold].index.tolist()
-
-    landsat_transform = transforms.Compose([
-        transforms.ToTensor(),
-        transforms.Lambda(lambda x: x * 0.0000275 - 0.2),
-        transforms.Lambda(lambda x: torch.clamp(x, 0.0, 0.3)),
-        transforms.Lambda(lambda x: x / 0.3)
-    ])
-
-    train_transform = transforms.Compose([
-        landsat_transform,
-        transforms.RandomHorizontalFlip(),
-        transforms.RandomVerticalFlip()
-    ])
-
-    train_dataset = RegressionDataset(df=df.iloc[train_folds], hdf5_path=hdf5_path, transform=train_transform)
-    val_dataset = RegressionDataset(df=df.iloc[val_fold], hdf5_path=hdf5_path, transform=landsat_transform)
-    test_dataset = RegressionDataset(df=df.iloc[test_fold], hdf5_path=hdf5_path, transform=landsat_transform)
-
-    train_dataloader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True, num_workers=num_workers, pin_memory=True, persistent_workers=True)
-    val_dataloader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers, pin_memory=True, persistent_workers=True)
-    test_dataloader = DataLoader(test_dataset, batch_size=batch_size, shuffle=False, num_workers=num_workers)
-
-    return train_dataloader, val_dataloader, test_dataloader
-
-def freeze_all(model):
-    for param in model.parameters():
-        param.requires_grad = False
-
-def unfreeze_all(model):
-    for param in model.parameters():
-        param.requires_grad = True
-
-def unfreeze_layers(model, layers: list):
-    for name, module in model.named_modules():
-        if any(layer in name for layer in layers):
-            for param in module.parameters():
-                param.requires_grad = True
-
-class RatledgeLoss(nn.Module):
-    def __init__(self, quants, lambda_b=5.0):
-        """
-        Args:
-          quants: 1-D Tensor of shape (6,) giving the 0%,20%,…,100% IWI cut-points
-                  computed once on the full training set.
-          lambda_b: weight on the max-bias penalty
-        """
-        super().__init__()
-        self.register_buffer('quants', quants)  
-        self.lambda_b = lambda_b
-
-    def forward(self, y_pred, y_true):
-        # 1) Standard MSE on the whole batch
-        mse = nn.functional.mse_loss(y_pred, y_true)
-
-        # 2) Compute squared bias per quintile, take the max
-        max_bias2 = torch.tensor(0., device=y_true.device)
-        for j in range(5):
-            lo, hi = self.quants[j], self.quants[j+1]
-            if j < 4:
-                mask = (y_true >= lo) & (y_true < hi)
-            else:
-                mask = (y_true >= lo) & (y_true <= hi)
-
-            if mask.any():
-                bias_j = (y_pred[mask] - y_true[mask]).mean()
-                bias2_j = bias_j.pow(2)
-                max_bias2 = torch.max(max_bias2, bias2_j)
-
-        return mse + self.lambda_b * max_bias2
-
 
 def train_model(model, train_loader, val_loader, num_epochs=20, patience=5, lr=1e-4, 
     loss='mse', lambda_r=1e-5, lambda_b=5, T_0=5, T_mult=2, quantile_values=None,
@@ -304,13 +153,6 @@ def train_model(model, train_loader, val_loader, num_epochs=20, patience=5, lr=1
     print(f"Validation data loading time: {val_data_time:.2f}s, ({100*(val_data_time/total_time):.2f}%)")
     print(f"Validation inference time: {val_inference_time:.2f}s, ({100*(val_inference_time/total_time):.2f}%)")
     return model
-
-def score_function(y, kde, delta=1e-5):
-        # Derivative of log density
-        log_p_plus = kde.logpdf(y + delta)[0]
-        log_p_minus = kde.logpdf(y - delta)[0]
-        d_logp = (log_p_plus - log_p_minus) / (2 * delta)
-        return d_logp
 
 if __name__ == '__main__':
 
