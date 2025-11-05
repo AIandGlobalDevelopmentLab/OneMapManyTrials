@@ -166,6 +166,7 @@ if __name__ == '__main__':
     parser.add_argument('--num_linear_epochs', type=int, help='Number of epochs for linear probe', default=3)
     parser.add_argument('--num_top_epochs', type=int, help='Number of epochs for unfreezing top ResNet block', default=20)
     parser.add_argument('--num_full_epochs', type=int, help='Number of epochs for full training', default=0)
+    parser.add_argument('--noisy_frac', type=float, help='Fraction of training/calibration labels that should be shuffled (for sensitivity analysis)', default=0)
     parser.add_argument('--seed', type=int, help='Seed for random initialization and shuffling', default=42)
     args = parser.parse_args()
 
@@ -215,7 +216,7 @@ if __name__ == '__main__':
         quantile_values = np.quantile(df[df['cv_fold'].isin(train_folds)]['iwi'].values, [0.0, 0.2, 0.4, 0.6, 0.8, 1.0])
 
         # Get dataloaders
-        train_dataloader, val_dataloader, test_dataloader = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=args.batch_size)
+        train_dataloader, val_dataloader, test_dataloader = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, args.noisy_frac, batch_size=args.batch_size)
 
         # Initialize model
         model = init_model()
@@ -258,7 +259,7 @@ if __name__ == '__main__':
         train_folds = [f for f in folds if f not in [test_fold, val_fold]]
 
         # Get dataloaders
-        _, _, test_dataloader = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=args.batch_size)
+        _, _, test_dataloader = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, args.noisy_frac, batch_size=args.batch_size)
 
         # Load model
         model = init_model()
@@ -305,7 +306,7 @@ if __name__ == '__main__':
         print(f"Train folds: {train_folds}, Validation/Calibration fold: {val_fold}")
 
         # Get dataloaders
-        train_dataloader, val_dataloader, _ = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, batch_size=args.batch_size)
+        train_dataloader, val_dataloader, _ = get_dataloaders(df, hdf5_path, train_folds, val_fold, test_fold, args.noisy_frac, batch_size=args.batch_size)
 
         # Load model
         model = init_model()
