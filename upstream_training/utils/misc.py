@@ -9,6 +9,7 @@ def get_save_dir_name(args):
         'num_linear_epochs': 3,
         'num_top_epochs': 20,
         'num_full_epochs': 0,
+        'noisy_frac': 0,
         'seed': 42
     }
 
